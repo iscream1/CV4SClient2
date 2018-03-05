@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -99,16 +100,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            new AsyncTask<Void, Void, JSONObject>() {
+            new AsyncTask<Void, Void, JsonObject>() {
                 final String ipText = ipET.getText().toString();
 
                 @Override
-                protected JSONObject doInBackground(Void... voids) {
+                protected JsonObject doInBackground(Void... voids) {
                     return postFile(ipText, photoFile.getPath(), curId++);
                 }
 
                 @Override
-                protected void onPostExecute(JSONObject jsonObject) {
+                protected void onPostExecute(JsonObject jsonObject) {
                     super.onPostExecute(jsonObject);
                     descriptorET.setText(jsonObject.toString());
                 }
@@ -117,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static JsonObject postFile(String url, String filePath, int id){
-        String result="";
         HttpClient httpClient = new DefaultHttpClient();
         HttpPost httpPost = new HttpPost(url);
         File file = new File(filePath);
@@ -137,15 +137,17 @@ public class MainActivity extends AppCompatActivity {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = r.readLine()) != null) {
-                if(line.charAt(0)=='"'&&line.charAt(line.length()-1)=='"') line=line.substring(1, line.length()-1);
+                //if(line.charAt(0)=='"'&&line.charAt(line.length()-1)=='"') line=line.substring(1, line.length()-1);
                 sb.append(line);
             }
 
-            result=sb.toString();
-            responseObject=new JsonParser().parse(result).getAsJsonObject();
+            String result=sb.toString();
+            result=result.replace("\\", "").replace("\"{", "{").replace("}\"", "}");
+            JsonElement je=new JsonParser().parse(result);
+            return je.getAsJsonObject();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return responseObject;
+        return null;
     }
 }
