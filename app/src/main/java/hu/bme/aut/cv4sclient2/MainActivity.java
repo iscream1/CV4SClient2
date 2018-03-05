@@ -13,11 +13,17 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -39,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     File photoFile = null;
     private static int curId=0;
     EditText ipET;
+    TextView descriptorET;
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -86,25 +93,30 @@ public class MainActivity extends AppCompatActivity {
         };
     });
         ipET=(EditText) findViewById(R.id.ipET);
+        descriptorET=(TextView) findViewById(R.id.descriptorTV);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            /*Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");*/
-            final String ipText=ipET.getText().toString();
-            new AsyncTask<Void, Void, Void>(){
+            new AsyncTask<Void, Void, JSONObject>() {
+                final String ipText = ipET.getText().toString();
+
                 @Override
-                protected Void doInBackground(Void... voids) {
-                    postFile(ipText, photoFile.getPath(), curId++);
-                    return null;
+                protected JSONObject doInBackground(Void... voids) {
+                    return postFile(ipText, photoFile.getPath(), curId++);
+                }
+
+                @Override
+                protected void onPostExecute(JSONObject jsonObject) {
+                    super.onPostExecute(jsonObject);
+                    descriptorET.setText(jsonObject.toString());
                 }
             }.execute();
         }
     }
 
-    public static JSONObject postFile(String url, String filePath, int id){
+    public static JsonObject postFile(String url, String filePath, int id){
         String result="";
         HttpClient httpClient = new DefaultHttpClient();
         HttpPost httpPost = new HttpPost(url);
@@ -112,17 +124,25 @@ public class MainActivity extends AppCompatActivity {
         MultipartEntityBuilder mpEntityBuilder=MultipartEntityBuilder.create();
         ContentBody cbFile = new FileBody(file, "image/jpeg");
         StringBody stringBody= null;
-        JSONObject responseObject=null;
+        JsonObject responseObject=null;
         try {
             stringBody = new StringBody(id+"");
             mpEntityBuilder.addPart("file", cbFile);
             mpEntityBuilder.addPart("id",stringBody);
             httpPost.setEntity(mpEntityBuilder.build());
-            System.out.println("executing request " + httpPost.getRequestLine());
             HttpResponse response = httpClient.execute(httpPost);
             HttpEntity resEntity = response.getEntity();
-            result=resEntity.toString();
-            responseObject=new JSONObject(result);
+
+            BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = r.readLine()) != null) {
+                if(line.charAt(0)=='"'&&line.charAt(line.length()-1)=='"') line=line.substring(1, line.length()-1);
+                sb.append(line);
+            }
+
+            result=sb.toString();
+            responseObject=new JsonParser().parse(result).getAsJsonObject();
         } catch (Exception e) {
             e.printStackTrace();
         }

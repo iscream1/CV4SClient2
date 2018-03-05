@@ -22,8 +22,13 @@
         <EditText
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="http://192.168.1.158:45455/api/Upload/user/PostUserImage"
-            android:id="@+id/ipET"/>
+            android:text="http://192.168.1.158:45455/api/image/"
+            android:id="@+id/ipET"
+            android:maxLines="1"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/descriptorTV"/>
     </LinearLayout>
 
 </RelativeLayout>
