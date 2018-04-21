@@ -1,5 +1,6 @@
 package hu.bme.aut.cv4sclient2;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -14,6 +15,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -37,6 +39,7 @@ import cz.msebera.android.httpclient.entity.mime.content.ContentBody;
 import cz.msebera.android.httpclient.entity.mime.content.FileBody;
 import cz.msebera.android.httpclient.entity.mime.content.StringBody;
 import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
+import cz.msebera.android.httpclient.params.CoreConnectionPNames;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -47,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private static int curId=0;
     EditText ipET;
     TextView descriptorET;
+    Button sendBtn;
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -72,82 +76,105 @@ public class MainActivity extends AppCompatActivity {
         ((Button)findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                    Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                        // Create the File where the photo should go
-                        try {
-                            photoFile = createImageFile();
-                        } catch (IOException ex) {
-                            // Error occurred while creating the File
-                            ex.printStackTrace();
-                        }
-                        // Continue only if the File was successfully created
-                        if (photoFile != null) {
-                            Uri photoURI = FileProvider.getUriForFile(getApplicationContext(),
-                                    "com.example.android.fileprovider",
-                                    photoFile);
-                            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                            Log.d("uri", photoURI.toString());
-                            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-                    }
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                // Create the File where the photo should go
+                try {
+                    photoFile = createImageFile();
+                } catch (IOException ex) {
+                    // Error occurred while creating the File
+                    ex.printStackTrace();
+                }
+                // Continue only if the File was successfully created
+                if (photoFile != null) {
+                    Uri photoURI = FileProvider.getUriForFile(getApplicationContext(),
+                            "com.example.android.fileprovider",
+                            photoFile);
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                    Log.d("uri", photoURI.toString());
+                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
             }
         };
     });
         ipET=(EditText) findViewById(R.id.ipET);
         descriptorET=(TextView) findViewById(R.id.descriptorTV);
+        sendBtn=(Button) findViewById(R.id.sendBtn);
+        sendBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                postFileAsync();
+            }
+        });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            new AsyncTask<Void, Void, JsonObject>() {
-                final String ipText = ipET.getText().toString();
-
-                @Override
-                protected JsonObject doInBackground(Void... voids) {
-                    return postFile(ipText, photoFile.getPath(), curId++);
-                }
-
-                @Override
-                protected void onPostExecute(JsonObject jsonObject) {
-                    super.onPostExecute(jsonObject);
-                    descriptorET.setText(jsonObject.toString());
-                }
-            }.execute();
+            sendBtn.setVisibility(View.VISIBLE);
         }
     }
 
-    public static JsonObject postFile(String url, String filePath, int id){
+    private void postFileAsync()
+    {
+        new AsyncTask<Void, Void, JsonObject>() {
+            final String ipText = ipET.getText().toString();
+            final Context context=getApplicationContext();
+            IOException exception=null;
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            protected JsonObject doInBackground(Void... voids) {
+                try {
+                    return postFile(ipText, photoFile.getPath(), curId++);
+                } catch (IOException e) {
+                    this.exception=e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(JsonObject jsonObject) {
+                super.onPostExecute(jsonObject);
+                if(exception==null)
+                    descriptorET.setText(jsonObject.toString());
+                else
+                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
+            }
+        }.execute();
+    }
+
+    public static JsonObject postFile(String url, String filePath, int id) throws IOException {
         HttpClient httpClient = new DefaultHttpClient();
+        httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
+        httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
         HttpPost httpPost = new HttpPost(url);
         File file = new File(filePath);
         MultipartEntityBuilder mpEntityBuilder=MultipartEntityBuilder.create();
         ContentBody cbFile = new FileBody(file, "image/jpeg");
         StringBody stringBody= null;
-        JsonObject responseObject=null;
-        try {
-            stringBody = new StringBody(id+"");
-            mpEntityBuilder.addPart("file", cbFile);
-            mpEntityBuilder.addPart("id",stringBody);
-            httpPost.setEntity(mpEntityBuilder.build());
-            HttpResponse response = httpClient.execute(httpPost);
-            HttpEntity resEntity = response.getEntity();
+        stringBody = new StringBody(id+"");
+        mpEntityBuilder.addPart("content", cbFile);
+        mpEntityBuilder.addPart("id",stringBody);
+        httpPost.setEntity(mpEntityBuilder.build());
+        HttpResponse response = httpClient.execute(httpPost);
+        HttpEntity resEntity = response.getEntity();
 
-            BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = r.readLine()) != null) {
-                //if(line.charAt(0)=='"'&&line.charAt(line.length()-1)=='"') line=line.substring(1, line.length()-1);
-                sb.append(line);
-            }
-
-            String result=sb.toString();
-            result=result.replace("\\", "").replace("\"{", "{").replace("}\"", "}");
-            JsonElement je=new JsonParser().parse(result);
-            return je.getAsJsonObject();
-        } catch (Exception e) {
-            e.printStackTrace();
+        BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = r.readLine()) != null) {
+            sb.append(line);
         }
-        return null;
+
+        String result=sb.toString();
+        result=result.replace("\\", "").replace("\"{", "{").replace("}\"", "}");
+        JsonElement je=new JsonParser().parse(result);
+        return je.getAsJsonObject();
     }
 }
