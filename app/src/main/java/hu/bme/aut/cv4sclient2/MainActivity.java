@@ -1,5 +1,7 @@
 package hu.bme.aut.cv4sclient2;
 
+import android.content.ContentProvider;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -19,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,8 +35,12 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -54,6 +61,7 @@ import static java.text.DateFormat.getDateInstance;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_PICK_IMAGE = 2;
 
     String mCurrentPhotoPath;
     File photoFile = null;
@@ -80,6 +88,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ((Button)findViewById(R.id.pickBtn)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(Intent.createChooser(intent, "Select from file system"), REQUEST_PICK_IMAGE);
+            }
+        });
         
         ((Button)findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -131,6 +149,20 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             sendBtn.setVisibility(View.VISIBLE);
+        }
+        else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK)
+        {
+            sendBtn.setVisibility(View.VISIBLE);
+            try {
+                InputStream inputStream=MainActivity.this.getContentResolver().openInputStream(data.getData());
+                byte[] buffer = new byte[inputStream.available()];
+                inputStream.read(buffer);
+                if(photoFile==null) photoFile=File.createTempFile("temp", ".jpg");
+                OutputStream outputStream=new FileOutputStream(photoFile);
+                outputStream.write(buffer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 

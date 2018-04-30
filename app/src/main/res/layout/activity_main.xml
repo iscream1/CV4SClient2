@@ -28,18 +28,25 @@
         </android.support.design.widget.TextInputLayout>
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:orientation="horizontal">
             <Button
                 android:layout_width="0dp"
-                android:layout_weight="0.5"
-                android:layout_height="wrap_content"
+                android:layout_weight="0.35"
+                android:layout_height="match_parent"
                 android:id="@+id/takeBtn"
-                android:text="Open camera"/>
+                android:text="Take photo"/>
             <Button
                 android:layout_width="0dp"
-                android:layout_weight="0.5"
-                android:layout_height="wrap_content"
+                android:layout_weight="0.35"
+                android:layout_height="match_parent"
+                android:id="@+id/pickBtn"
+                android:text="Choose file"
+                />
+            <Button
+                android:layout_width="0dp"
+                android:layout_weight="0.3"
+                android:layout_height="match_parent"
                 android:id="@+id/sendBtn"
                 android:text="Send request"
                 android:visibility="invisible"/>
