@@ -1,6 +1,7 @@
 package hu.bme.aut.cv4sclient2;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -8,12 +9,17 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.content.FileProvider;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,10 +58,8 @@ public class MainActivity extends AppCompatActivity {
     TextView descriptorET;
     Button sendBtn;
 
-    private File createImageFile() throws IOException {
+    private File createImageFile(String imageFileName) throws IOException {
         // Create an image file name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
@@ -76,24 +80,37 @@ public class MainActivity extends AppCompatActivity {
         ((Button)findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            final Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                // Create the File where the photo should go
-                try {
-                    photoFile = createImageFile();
-                } catch (IOException ex) {
-                    // Error occurred while creating the File
-                    ex.printStackTrace();
-                }
-                // Continue only if the File was successfully created
-                if (photoFile != null) {
-                    Uri photoURI = FileProvider.getUriForFile(getApplicationContext(),
-                            "com.example.android.fileprovider",
-                            photoFile);
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                    Log.d("uri", photoURI.toString());
-                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-            }
+                AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this);
+                builder.setCancelable(false);
+                builder.setTitle("File name");
+                final EditText editText=new EditText(getApplicationContext());
+                LinearLayout.LayoutParams layoutParams= new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
+                editText.setLayoutParams(layoutParams);
+                builder.setView(editText);
+                //builder.setView(getLayoutInflater().inflate(R.layout.filename_dialogview, null));
+                //final EditText fileET = (EditText) findViewById(R.id.fileET);
+                editText.setText("JPEG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "_");
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        try {
+                            photoFile = createImageFile(editText.getText().toString());
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                        if (photoFile != null) {
+                            Uri photoURI = FileProvider.getUriForFile(getApplicationContext(),
+                                    "com.example.android.fileprovider",
+                                    photoFile);
+                            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                            Log.d("uri", photoURI.toString());
+                            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+                        }
+                    }
+                });
+                builder.create().show();
             }
         };
     });
