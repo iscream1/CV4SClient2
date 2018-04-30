@@ -26,6 +26,7 @@ import android.widget.Toast;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
 
 import org.json.JSONObject;
 
@@ -33,6 +34,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -46,6 +48,8 @@ import cz.msebera.android.httpclient.entity.mime.content.FileBody;
 import cz.msebera.android.httpclient.entity.mime.content.StringBody;
 import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
 import cz.msebera.android.httpclient.params.CoreConnectionPNames;
+
+import static java.text.DateFormat.getDateInstance;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -83,15 +87,13 @@ public class MainActivity extends AppCompatActivity {
             final Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
                 AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this);
-                builder.setCancelable(false);
+                builder.setCancelable(true);
                 builder.setTitle("File name");
                 final EditText editText=new EditText(getApplicationContext());
                 LinearLayout.LayoutParams layoutParams= new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
                 editText.setLayoutParams(layoutParams);
                 builder.setView(editText);
-                //builder.setView(getLayoutInflater().inflate(R.layout.filename_dialogview, null));
-                //final EditText fileET = (EditText) findViewById(R.id.fileET);
-                editText.setText("JPEG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "_");
+                editText.setText("JPEG_" + getDateInstance().format(new Date()) + "_");
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
@@ -134,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void postFileAsync()
     {
-        new AsyncTask<Void, Void, JsonObject>() {
+        new AsyncTask<Void, Void, String>() {
             final String ipText = ipET.getText().toString();
             final Context context=getApplicationContext();
             IOException exception=null;
@@ -146,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected JsonObject doInBackground(Void... voids) {
+            protected String doInBackground(Void... voids) {
                 try {
                     return postFile(ipText, photoFile.getPath(), curId++);
                 } catch (IOException e) {
@@ -156,27 +158,26 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected void onPostExecute(JsonObject jsonObject) {
-                super.onPostExecute(jsonObject);
+            protected void onPostExecute(String json) {
+                super.onPostExecute(json);
                 if(exception==null)
-                    descriptorET.setText(jsonObject.toString());
+                    descriptorET.setText(json);
                 else
                     Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
             }
         }.execute();
     }
 
-    public static JsonObject postFile(String url, String filePath, int id) throws IOException {
+    public static String postFile(String url, String filePath, int id) throws IOException {
         HttpClient httpClient = new DefaultHttpClient();
         httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
         httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
         HttpPost httpPost = new HttpPost(url);
         File file = new File(filePath);
         MultipartEntityBuilder mpEntityBuilder=MultipartEntityBuilder.create();
-        ContentBody cbFile = new FileBody(file, "image/jpeg");
         StringBody stringBody= null;
         stringBody = new StringBody(id+"");
-        mpEntityBuilder.addPart("content", cbFile);
+        mpEntityBuilder.addBinaryBody("image", file);
         mpEntityBuilder.addPart("id",stringBody);
         httpPost.setEntity(mpEntityBuilder.build());
         HttpResponse response = httpClient.execute(httpPost);
@@ -190,8 +191,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String result=sb.toString();
-        result=result.replace("\\", "").replace("\"{", "{").replace("}\"", "}");
-        JsonElement je=new JsonParser().parse(result);
-        return je.getAsJsonObject();
+        result=result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
+                .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
+        Log.d("result", result);
+
+        /*JsonReader jsonReader=new JsonReader(new StringReader(result));
+        jsonReader.beginObject();
+
+        JsonObject jsonObject=new JsonObject();
+
+        while(jsonReader.hasNext())
+        {
+            String tag=jsonReader.nextName();
+            if (tag.equals("message"))
+                jsonObject.addProperty("message", jsonReader.nextString());
+            else if (tag.equals("data"))
+                jsonObject.addProperty("data", jsonReader.nextString());
+        }
+        jsonReader.endObject();*/
+
+        return result;
     }
 }
