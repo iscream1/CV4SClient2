@@ -52,6 +52,25 @@
                 android:visibility="invisible"/>
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Spinner
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.8"
+                android:id="@+id/spinner">
+            </Spinner>
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.2"
+                android:text="load"
+                android:id="@+id/loadBtn"/>
+        </LinearLayout>
+
+
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent">
