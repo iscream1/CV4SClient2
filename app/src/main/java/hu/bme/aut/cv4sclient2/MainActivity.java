@@ -19,7 +19,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -135,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         ((Button) findViewById(R.id.loadBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                getListFromServiceAsync();
+                getListFromServiceAsync(ipET.getText().toString(), getApplicationContext());
             }
         });
 
@@ -147,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                postFileAsync();
+                postFileAsync(ipET.getText().toString(), getApplicationContext());
             }
         });
     }
@@ -166,15 +165,13 @@ public class MainActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parentView, final View selectedItemView, final int position, long id) {
                 if (id != 0) {
                     final long idToGet = id - 1;
+                    final Context context=getApplicationContext();
+                    final String url=ipET.getText().toString();
                     new AsyncTask<Void, Void, Void>() {
                         @Override
                         protected Void doInBackground(Void... voids) {
-                            try {
-                                Log.d("spinner", "" + position);
-                                getFromServiceAsync(idToGet);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
+                            Log.d("spinner", "" + position);
+                            getFromServiceAsync(idToGet, url, context);
                             return null;
                         }
                     }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
@@ -218,10 +215,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void postFileAsync() {
+    private void postFileAsync(final String url, final Context context) {
         new AsyncTask<Void, Void, String>() {
-            final String ipText = ipET.getText().toString();
-            final Context context = getApplicationContext();
             IOException exception = null;
 
             @Override
@@ -233,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected String doInBackground(Void... voids) {
                 try {
-                    return postFile(ipText, photoFile.getPath(), curId++);
+                    return postFile(url, photoFile.getPath(), curId++);
                 } catch (IOException e) {
                     this.exception = e;
                 }
@@ -248,13 +243,11 @@ public class MainActivity extends AppCompatActivity {
                 else
                     Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
             }
-        }.execute();
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    private void getListFromServiceAsync() {
+    private void getListFromServiceAsync(final String url, final Context context) {
         new AsyncTask<Void, Void, List<String>>() {
-            final String ipText = ipET.getText().toString();
-            final Context context = getApplicationContext();
             IOException exception = null;
 
             @Override
@@ -266,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected List<String> doInBackground(Void... voids) {
                 try {
-                    String result = getFromService(ipText);
+                    String result = getFromService(url);
 
                     result = result.replace("\\\"", "'");
                     result = result.substring(1, result.length() - 1);
@@ -293,13 +286,11 @@ public class MainActivity extends AppCompatActivity {
                 else
                     Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
             }
-        }.execute();
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    private void getFromServiceAsync(final long id) {
+    private void getFromServiceAsync(final long id, final String url, final Context context) {
         new AsyncTask<Void, Void, String>() {
-            final String ipText = ipET.getText().toString();
-            final Context context = getApplicationContext();
             IOException exception = null;
 
             @Override
@@ -311,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected String doInBackground(Void... voids) {
                 try {
-                    String result = getFromService(ipText + "/" + id);
+                    String result = getFromService(url + "/" + id);
                     result = result = result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
                             .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
                     return result;
@@ -326,7 +317,7 @@ public class MainActivity extends AppCompatActivity {
                 super.onPostExecute(str);
                 descriptorET.setText(str);
             }
-        }.execute();
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     private String getFromService(String url) throws IOException {
