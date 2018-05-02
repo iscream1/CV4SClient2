@@ -25,29 +25,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-
-import cz.msebera.android.httpclient.HttpEntity;
-import cz.msebera.android.httpclient.HttpResponse;
-import cz.msebera.android.httpclient.client.HttpClient;
-import cz.msebera.android.httpclient.client.methods.HttpGet;
-import cz.msebera.android.httpclient.client.methods.HttpPost;
-import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
-import cz.msebera.android.httpclient.entity.mime.content.StringBody;
-import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
-import cz.msebera.android.httpclient.params.CoreConnectionPNames;
+import java.util.Map;
+import hu.bme.aut.cv4sclient2.controller.NetworkController;
 
 import static java.text.DateFormat.getDateInstance;
 
@@ -56,27 +47,11 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_PICK_IMAGE = 2;
 
-    String mCurrentPhotoPath;
     File photoFile = null;
     private static int curId = 0;
     EditText ipET;
     TextView descriptorET;
     Button sendBtn;
-
-
-    private File createImageFile(String imageFileName) throws IOException {
-        // Create an image file name
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
-                imageFileName,  /* prefix */
-                ".jpg",         /* suffix */
-                storageDir      /* directory */
-        );
-
-        // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = image.getAbsolutePath();
-        return image;
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             try {
-                                photoFile = createImageFile(editText.getText().toString());
+                                photoFile = File.createTempFile(editText.getText().toString(),".jpg",getExternalFilesDir(Environment.DIRECTORY_PICTURES));
                             } catch (IOException ex) {
                                 ex.printStackTrace();
                             }
@@ -138,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        updateSpinner(Collections.singletonList("(List not loaded)"));
+        updateGetSpinner(Collections.singletonList("(List not loaded)"));
 
         ipET = (EditText) findViewById(R.id.ipET);
         descriptorET = (TextView) findViewById(R.id.descriptorTV);
@@ -151,8 +126,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void updateSpinner(List<String> list) {
-        Spinner spinner = (Spinner) findViewById(R.id.spinner);
+    private void updateGetSpinner(List<String> list) {
+        Spinner spinner = (Spinner) findViewById(R.id.getSpinner);
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, list);
@@ -167,14 +142,7 @@ public class MainActivity extends AppCompatActivity {
                     final long idToGet = id - 1;
                     final Context context=getApplicationContext();
                     final String url=ipET.getText().toString();
-                    new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... voids) {
-                            Log.d("spinner", "" + position);
-                            getFromServiceAsync(idToGet, url, context);
-                            return null;
-                        }
-                    }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                    getFromServiceAsync(idToGet, url, context);
                 }
             }
 
@@ -182,7 +150,41 @@ public class MainActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parentView) {
             }
         });
+    }
 
+    private void updateResultSpinner(final JsonObject jsonObject) {
+        final Spinner spinner = (Spinner) findViewById(R.id.resultSpinner);
+        spinner.setVisibility(View.VISIBLE);
+
+        List<String> keyList=new ArrayList<>();
+        keyList.add("(Choose from result elements)");
+        for (Map.Entry e:jsonObject.entrySet()) {
+            keyList.add((String)e.getKey());
+        }
+
+        ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
+                android.R.layout.simple_spinner_item, keyList);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setVisibility(View.VISIBLE);
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, final View selectedItemView, final int position, long id) {
+                if (id == 0) {
+                    descriptorET.setText("");
+                }
+                else{
+                    descriptorET.setText(jsonObject.get(spinner.getSelectedItem().toString()).toString()
+                            .replace("\\", "").replace("\"{", "{").replace("}\"", "}")
+                            .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}"));
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+            }
+        });
     }
 
     public String getFilenameFromUri(Uri uri) {
@@ -216,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void postFileAsync(final String url, final Context context) {
-        new AsyncTask<Void, Void, String>() {
+        new AsyncTask<Void, Void, JsonObject>() {
             IOException exception = null;
 
             @Override
@@ -226,9 +228,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected String doInBackground(Void... voids) {
+            protected JsonObject doInBackground(Void... voids) {
                 try {
-                    return postFile(url, photoFile.getPath(), curId++);
+                    return NetworkController.postFile(url, photoFile.getPath(), curId++);
                 } catch (IOException e) {
                     this.exception = e;
                 }
@@ -236,10 +238,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected void onPostExecute(String json) {
-                super.onPostExecute(json);
+            protected void onPostExecute(JsonObject jsonObject) {
+                super.onPostExecute(jsonObject);
                 if (exception == null)
-                    descriptorET.setText(json);
+                    updateResultSpinner(jsonObject);
                 else
                     Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
             }
@@ -259,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected List<String> doInBackground(Void... voids) {
                 try {
-                    String result = getFromService(url);
+                    String result = NetworkController.getFromService(url);
 
                     result = result.replace("\\\"", "'");
                     result = result.substring(1, result.length() - 1);
@@ -281,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
                 if (exception == null)
                 {
                     list.add(0, "(Choose filename)");
-                    updateSpinner(list);
+                    updateGetSpinner(list);
                 }
                 else
                     Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
@@ -296,14 +298,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                //Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             protected String doInBackground(Void... voids) {
                 try {
-                    String result = getFromService(url + "/" + id);
-                    result = result = result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
+                    String result = NetworkController.getFromService(url + "/" + id);
+                    result = result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
                             .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
                     return result;
                 } catch (IOException e) {
@@ -315,72 +317,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPostExecute(String str) {
                 super.onPostExecute(str);
-                descriptorET.setText(str);
+                if(exception==null) {
+                    findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
+                    descriptorET.setText(str);
+                }
+                else
+                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-    }
-
-    private String getFromService(String url) throws IOException {
-        HttpClient httpClient = new DefaultHttpClient();
-        httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
-        httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
-        HttpGet httpGet = new HttpGet(url);
-        HttpResponse httpResponse = httpClient.execute(httpGet);
-        HttpEntity resEntity = httpResponse.getEntity();
-
-        BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = r.readLine()) != null) {
-            sb.append(line);
-        }
-
-        String result = sb.toString();
-        return result;
-    }
-
-    public static String postFile(String url, String filePath, int id) throws IOException {
-        HttpClient httpClient = new DefaultHttpClient();
-        httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
-        httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
-        HttpPost httpPost = new HttpPost(url);
-        File file = new File(filePath);
-        MultipartEntityBuilder mpEntityBuilder = MultipartEntityBuilder.create();
-        StringBody stringBody = null;
-        stringBody = new StringBody(id + "");
-        mpEntityBuilder.addBinaryBody("image", file);
-        mpEntityBuilder.addPart("id", stringBody);
-        httpPost.setEntity(mpEntityBuilder.build());
-        HttpResponse response = httpClient.execute(httpPost);
-        HttpEntity resEntity = response.getEntity();
-
-        BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = r.readLine()) != null) {
-            sb.append(line);
-        }
-
-        String result = sb.toString();
-        result = result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
-                .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
-        Log.d("result", result);
-
-        /*JsonReader jsonReader=new JsonReader(new StringReader(result));
-        jsonReader.beginObject();
-
-        JsonObject jsonObject=new JsonObject();
-
-        while(jsonReader.hasNext())
-        {
-            String tag=jsonReader.nextName();
-            if (tag.equals("message"))
-                jsonObject.addProperty("message", jsonReader.nextString());
-            else if (tag.equals("data"))
-                jsonObject.addProperty("data", jsonReader.nextString());
-        }
-        jsonReader.endObject();*/
-
-        return result;
     }
 }
