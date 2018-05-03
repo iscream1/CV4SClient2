@@ -8,7 +8,7 @@ public class StringHandler {
     public static String formatToDisplay(String in)
     {
         return in.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
-            .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
+                .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
     }
 
     public static String formatToParse(String in)

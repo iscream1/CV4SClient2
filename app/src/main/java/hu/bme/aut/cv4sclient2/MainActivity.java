@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import hu.bme.aut.cv4sclient2.controller.NetworkController;
 import hu.bme.aut.cv4sclient2.controller.StringHandler;
+import hu.bme.aut.cv4sclient2.model.Functor;
 
 import static java.text.DateFormat.getDateInstance;
 
@@ -108,7 +109,14 @@ public class MainActivity extends AppCompatActivity {
         ((Button) findViewById(R.id.loadBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                getListFromServiceAsync(ipET.getText().toString(), getApplicationContext());
+                NetworkController.getListFromServiceAsync(ipET.getText().toString(), getApplicationContext(), new Functor() {
+                    @Override
+                    public void run(Object param) {
+                        List<String> list=(List<String>)param;
+                        list.add(0, "(Choose)");
+                        updateGetSpinner((List<String>)list);
+                    }
+                });
             }
         });
 
@@ -120,15 +128,18 @@ public class MainActivity extends AppCompatActivity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                postFileAsync(ipET.getText().toString(), getApplicationContext());
+                NetworkController.postFileAsync(ipET.getText().toString(), photoFile.getPath(), getApplicationContext(), new Functor() {
+                    @Override
+                    public void run(Object jsonObject) {
+                        updateResultSpinner((JsonObject)jsonObject);
+                    }
+                });
             }
         });
     }
 
     private void updateGetSpinner(List<String> list) {
         Spinner spinner = (Spinner) findViewById(R.id.getSpinner);
-
-        list.add(0, "(Choose)");
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, list);
@@ -143,7 +154,13 @@ public class MainActivity extends AppCompatActivity {
                     final long idToGet = id - 1;
                     final Context context=getApplicationContext();
                     final String url=ipET.getText().toString();
-                    getFromServiceAsync(idToGet, url, context);
+                    NetworkController.getFromServiceAsync(idToGet, url, context, new Functor() {
+                        @Override
+                        public void run(Object str) {
+                            findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
+                            descriptorET.setText((String)str);
+                        }
+                    });
                 }
             }
 
@@ -202,122 +219,21 @@ public class MainActivity extends AppCompatActivity {
             sendBtn.setVisibility(View.VISIBLE);
         } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK) {
             sendBtn.setVisibility(View.VISIBLE);
-            try {
-                InputStream inputStream = MainActivity.this.getContentResolver().openInputStream(data.getData());
-                byte[] buffer = new byte[inputStream.available()];
-                inputStream.read(buffer);
-                if (photoFile == null)
-                    photoFile = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getFilenameFromUri(data.getData()));
-                OutputStream outputStream = new FileOutputStream(photoFile);
-                outputStream.write(buffer);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            createFileWithName(data.getData());
         }
     }
 
-    private void postFileAsync(final String url, final Context context) {
-        new AsyncTask<Void, Void, JsonObject>() {
-            IOException exception = null;
-
-            @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            protected JsonObject doInBackground(Void... voids) {
-                try {
-                    return NetworkController.post(url, photoFile.getPath());
-                } catch (IOException e) {
-                    this.exception = e;
-                }
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(JsonObject jsonObject) {
-                super.onPostExecute(jsonObject);
-                if (exception == null)
-                    updateResultSpinner(jsonObject);
-                else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-    }
-
-    public void getListFromServiceAsync(final String url, final Context context) {
-        new AsyncTask<Void, Void, List<String>>() {
-            IOException exception = null;
-
-            @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            protected List<String> doInBackground(Void... voids) {
-                try {
-                    String result = NetworkController.get(url);
-
-                    JsonArray jsonArray = new JsonParser().parse(StringHandler.formatToParse(result)).getAsJsonArray();
-                    List<String> retList = new ArrayList<>();
-                    for (int i = 0; i < jsonArray.size(); i++) {
-                        retList.add(jsonArray.get(i).toString());
-                    }
-                    return retList;
-                } catch (IOException e) {
-                    this.exception = e;
-                }
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(List<String> list) {
-                super.onPostExecute(list);
-                if (exception == null)
-                {
-                    updateGetSpinner(list);
-                }
-                else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-    }
-
-    public void getFromServiceAsync(final long id, final String url, final Context context) {
-        new AsyncTask<Void, Void, String>() {
-            IOException exception = null;
-
-            @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            protected String doInBackground(Void... voids) {
-                try {
-                    String result = NetworkController.get(url + "/" + id);
-                    return StringHandler.formatToDisplay(result);
-                } catch (IOException e) {
-                    this.exception = e;
-                }
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(String str) {
-                super.onPostExecute(str);
-                if(exception==null) {
-                    findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
-                    descriptorET.setText(str);
-                }
-                else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    private void createFileWithName(Uri uri) {
+        try {
+            InputStream inputStream = MainActivity.this.getContentResolver().openInputStream(uri);
+            byte[] buffer = new byte[inputStream.available()];
+            inputStream.read(buffer);
+            if (photoFile == null)
+                photoFile = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getFilenameFromUri(uri));
+            OutputStream outputStream = new FileOutputStream(photoFile);
+            outputStream.write(buffer);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
