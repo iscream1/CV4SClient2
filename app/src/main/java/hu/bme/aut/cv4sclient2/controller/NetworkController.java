@@ -21,7 +21,7 @@ import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
 import cz.msebera.android.httpclient.params.CoreConnectionPNames;
 
 public class NetworkController {
-    public static String getFromService(String url) throws IOException {
+    public static String get(String url) throws IOException {
         HttpClient httpClient = new DefaultHttpClient();
         httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
         httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
@@ -36,41 +36,34 @@ public class NetworkController {
             sb.append(line);
         }
 
-        String result = sb.toString();
-        return result;
+        return sb.toString();
     }
 
-    public static JsonObject postFile(String url, String filePath, int id) throws IOException {
+    public static JsonObject post(String url, String filePath) throws IOException {
         HttpClient httpClient = new DefaultHttpClient();
         httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 5000);
         httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 5000);
         HttpPost httpPost = new HttpPost(url);
         File file = new File(filePath);
-        MultipartEntityBuilder mpEntityBuilder = MultipartEntityBuilder.create();
-        StringBody stringBody = null;
-        stringBody = new StringBody(id + "");
-        mpEntityBuilder.addBinaryBody("image", file);
-        mpEntityBuilder.addPart("id", stringBody);
-        httpPost.setEntity(mpEntityBuilder.build());
-        HttpResponse response = httpClient.execute(httpPost);
-        HttpEntity resEntity = response.getEntity();
+        MultipartEntityBuilder multipartEntityBuilder = MultipartEntityBuilder.create();
+        multipartEntityBuilder.addBinaryBody("image", file);
+        httpPost.setEntity(multipartEntityBuilder.build());
+        HttpResponse httpResponse = httpClient.execute(httpPost);
+        HttpEntity httpEntity = httpResponse.getEntity();
 
-        BufferedReader r = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-        StringBuilder sb = new StringBuilder();
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(httpEntity.getContent()));
+        StringBuilder stringBuilder = new StringBuilder();
         String line;
-        while ((line = r.readLine()) != null) {
-            sb.append(line);
+        while ((line = bufferedReader.readLine()) != null) {
+            stringBuilder.append(line);
         }
 
-        String result = sb.toString();
-        Log.d("result", result);
+        String result = stringBuilder.toString();
 
         result = result.replace("\\\"", "'");
         result = result.replace("\\\\", "\\");
         result = result.substring(1, result.length() - 1);
-        JsonParser jsonParser = new JsonParser();
-        JsonObject jsonObject = jsonParser.parse(result).getAsJsonObject();
 
-        return jsonObject;
+        return new JsonParser().parse(result).getAsJsonObject();
     }
 }

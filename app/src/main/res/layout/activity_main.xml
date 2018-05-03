@@ -22,7 +22,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="http://192.168.1.202:45455/api/image/"
-                android:hint="REST endpoint URL"
+                android:hint="@string/rest_endpoint_url"
                 android:id="@+id/ipET"
                 android:maxLines="1"/>
         </android.support.design.widget.TextInputLayout>
@@ -35,20 +35,20 @@
                 android:layout_weight="0.35"
                 android:layout_height="match_parent"
                 android:id="@+id/takeBtn"
-                android:text="Take photo"/>
+                android:text="@string/take_photo"/>
             <Button
                 android:layout_width="0dp"
                 android:layout_weight="0.35"
                 android:layout_height="match_parent"
                 android:id="@+id/pickBtn"
-                android:text="Choose file"
+                android:text="@string/choose_file"
                 />
             <Button
                 android:layout_width="0dp"
                 android:layout_weight="0.3"
                 android:layout_height="match_parent"
                 android:id="@+id/sendBtn"
-                android:text="Send request"
+                android:text="@string/send_request"
                 android:visibility="invisible"/>
         </LinearLayout>
 
@@ -66,7 +66,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.2"
-                android:text="Load"
+                android:text="@string/load"
                 android:id="@+id/loadBtn"/>
         </LinearLayout>
         <Spinner

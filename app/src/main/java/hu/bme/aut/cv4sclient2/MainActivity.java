@@ -39,6 +39,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import hu.bme.aut.cv4sclient2.controller.NetworkController;
+import hu.bme.aut.cv4sclient2.controller.StringHandler;
 
 import static java.text.DateFormat.getDateInstance;
 
@@ -48,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PICK_IMAGE = 2;
 
     File photoFile = null;
-    private static int curId = 0;
     EditText ipET;
     TextView descriptorET;
     Button sendBtn;
@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ((Button) findViewById(R.id.pickBtn)).setOnClickListener(new View.OnClickListener() {
+        (findViewById(R.id.pickBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent();
@@ -71,8 +71,8 @@ public class MainActivity extends AppCompatActivity {
         ((Button) findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                final Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                final Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                if (intent.resolveActivity(getPackageManager()) != null) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                     builder.setCancelable(true);
                     builder.setTitle("File name");
@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
                     LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
                     editText.setLayoutParams(layoutParams);
                     builder.setView(editText);
-                    editText.setText("JPEG_" + getDateInstance().format(new Date()) + "_");
+                    editText.setText(getDateInstance().format(new Date()) + "_");
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
@@ -90,12 +90,11 @@ public class MainActivity extends AppCompatActivity {
                                 ex.printStackTrace();
                             }
                             if (photoFile != null) {
-                                Uri photoURI = FileProvider.getUriForFile(getApplicationContext(),
+                                Uri uri = FileProvider.getUriForFile(getApplicationContext(),
                                         "com.example.android.fileprovider",
                                         photoFile);
-                                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                                Log.d("uri", photoURI.toString());
-                                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+                                intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+                                startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
                             }
                         }
                     });
@@ -128,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateGetSpinner(List<String> list) {
         Spinner spinner = (Spinner) findViewById(R.id.getSpinner);
+
+        list.add(0, "(Choose)");
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, list);
@@ -175,9 +176,7 @@ public class MainActivity extends AppCompatActivity {
                     descriptorET.setText("");
                 }
                 else{
-                    descriptorET.setText(jsonObject.get(spinner.getSelectedItem().toString()).toString()
-                            .replace("\\", "").replace("\"{", "{").replace("}\"", "}")
-                            .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}"));
+                    descriptorET.setText(StringHandler.formatToDisplay(jsonObject.get(spinner.getSelectedItem().toString()).toString()));
                 }
             }
 
@@ -230,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected JsonObject doInBackground(Void... voids) {
                 try {
-                    return NetworkController.postFile(url, photoFile.getPath(), curId++);
+                    return NetworkController.post(url, photoFile.getPath());
                 } catch (IOException e) {
                     this.exception = e;
                 }
@@ -248,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    private void getListFromServiceAsync(final String url, final Context context) {
+    public void getListFromServiceAsync(final String url, final Context context) {
         new AsyncTask<Void, Void, List<String>>() {
             IOException exception = null;
 
@@ -261,11 +260,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected List<String> doInBackground(Void... voids) {
                 try {
-                    String result = NetworkController.getFromService(url);
+                    String result = NetworkController.get(url);
 
-                    result = result.replace("\\\"", "'");
-                    result = result.substring(1, result.length() - 1);
-                    JsonArray jsonArray = new JsonParser().parse(result).getAsJsonArray();
+                    JsonArray jsonArray = new JsonParser().parse(StringHandler.formatToParse(result)).getAsJsonArray();
                     List<String> retList = new ArrayList<>();
                     for (int i = 0; i < jsonArray.size(); i++) {
                         retList.add(jsonArray.get(i).toString());
@@ -282,7 +279,6 @@ public class MainActivity extends AppCompatActivity {
                 super.onPostExecute(list);
                 if (exception == null)
                 {
-                    list.add(0, "(Choose filename)");
                     updateGetSpinner(list);
                 }
                 else
@@ -291,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    private void getFromServiceAsync(final long id, final String url, final Context context) {
+    public void getFromServiceAsync(final long id, final String url, final Context context) {
         new AsyncTask<Void, Void, String>() {
             IOException exception = null;
 
@@ -304,10 +300,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected String doInBackground(Void... voids) {
                 try {
-                    String result = NetworkController.getFromService(url + "/" + id);
-                    result = result.replace("\\", "").replace("\"{", "{").replace("}\"", "}")
-                            .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
-                    return result;
+                    String result = NetworkController.get(url + "/" + id);
+                    return StringHandler.formatToDisplay(result);
                 } catch (IOException e) {
                     this.exception = e;
                 }

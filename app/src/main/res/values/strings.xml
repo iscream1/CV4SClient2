@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">CV4SClient2</string>
+    <string name="rest_endpoint_url">REST endpoint URL</string>
+    <string name="take_photo">Take photo</string>
+    <string name="choose_file">Choose file</string>
+    <string name="send_request">Send request</string>
+    <string name="load">Load</string>
 </resources>
