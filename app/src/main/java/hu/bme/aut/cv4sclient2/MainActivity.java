@@ -5,7 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
@@ -13,7 +12,6 @@ import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -22,17 +20,15 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -42,8 +38,6 @@ import hu.bme.aut.cv4sclient2.controller.NetworkController;
 import hu.bme.aut.cv4sclient2.controller.StringHandler;
 import hu.bme.aut.cv4sclient2.model.Functor;
 
-import static java.text.DateFormat.getDateInstance;
-
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
@@ -51,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     File photoFile = null;
     EditText ipET;
-    TextView descriptorET;
+    TextView descriptorTV;
     Button sendBtn;
 
     @Override
@@ -59,17 +53,66 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        (findViewById(R.id.pickBtn)).setOnClickListener(new View.OnClickListener() {
+        initPickBtn();
+
+        initTakeBtn();
+
+        initLoadBtn();
+
+        initSendBtn();
+
+        initGetSpinner();
+
+        initIpET();
+
+        initDescriptorTV();
+    }
+
+    private void initIpET() {
+        ipET = (EditText) findViewById(R.id.ipET);
+    }
+
+    private void initDescriptorTV() {
+        descriptorTV = (TextView) findViewById(R.id.descriptorTV);
+    }
+
+    private void initSendBtn() {
+        sendBtn = (Button) findViewById(R.id.sendBtn);
+        sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent();
-                intent.setType("image/*");
-                intent.setAction(Intent.ACTION_OPEN_DOCUMENT);
-                startActivityForResult(Intent.createChooser(intent, "Select from file system"), REQUEST_PICK_IMAGE);
+                NetworkController.postFileAsync(ipET.getText().toString(), photoFile.getPath(), getApplicationContext(), new Functor() {
+                    @Override
+                    public void run(Object jsonObject) {
+                        updateResultSpinner((JsonObject)jsonObject);
+                    }
+                });
             }
         });
+    }
 
-        ((Button) findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
+    private void initGetSpinner() {
+        updateGetSpinner(Collections.singletonList("(List not loaded)"));
+    }
+
+    private void initLoadBtn() {
+        (findViewById(R.id.loadBtn)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                NetworkController.getListFromServiceAsync(ipET.getText().toString(), getApplicationContext(), new Functor() {
+                    @Override
+                    public void run(Object param) {
+                        List<String> list=(List<String>)param;
+                        list.add(0, "(Choose)");
+                        updateGetSpinner((List<String>)list);
+                    }
+                });
+            }
+        });
+    }
+
+    private void initTakeBtn() {
+        (findViewById(R.id.takeBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 final Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -81,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                     LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
                     editText.setLayoutParams(layoutParams);
                     builder.setView(editText);
-                    editText.setText(getDateInstance().format(new Date()) + "_");
+                    editText.setText(new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "_");
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
@@ -101,39 +144,17 @@ public class MainActivity extends AppCompatActivity {
                     });
                     builder.create().show();
                 }
-            }
-
-            ;
+            };
         });
+    }
 
-        ((Button) findViewById(R.id.loadBtn)).setOnClickListener(new View.OnClickListener() {
+    private void initPickBtn() {
+        (findViewById(R.id.pickBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                NetworkController.getListFromServiceAsync(ipET.getText().toString(), getApplicationContext(), new Functor() {
-                    @Override
-                    public void run(Object param) {
-                        List<String> list=(List<String>)param;
-                        list.add(0, "(Choose)");
-                        updateGetSpinner((List<String>)list);
-                    }
-                });
-            }
-        });
-
-        updateGetSpinner(Collections.singletonList("(List not loaded)"));
-
-        ipET = (EditText) findViewById(R.id.ipET);
-        descriptorET = (TextView) findViewById(R.id.descriptorTV);
-        sendBtn = (Button) findViewById(R.id.sendBtn);
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                NetworkController.postFileAsync(ipET.getText().toString(), photoFile.getPath(), getApplicationContext(), new Functor() {
-                    @Override
-                    public void run(Object jsonObject) {
-                        updateResultSpinner((JsonObject)jsonObject);
-                    }
-                });
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("image/*");
+                startActivityForResult(Intent.createChooser(intent, "Select from file system"), REQUEST_PICK_IMAGE);
             }
         });
     }
@@ -158,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run(Object str) {
                             findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
-                            descriptorET.setText((String)str);
+                            descriptorTV.setText((String)str);
                         }
                     });
                 }
@@ -190,10 +211,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parentView, final View selectedItemView, final int position, long id) {
                 if (id == 0) {
-                    descriptorET.setText("");
+                    descriptorTV.setText("");
                 }
                 else{
-                    descriptorET.setText(StringHandler.formatToDisplay(jsonObject.get(spinner.getSelectedItem().toString()).toString()));
+                    descriptorTV.setText(StringHandler.formatToDisplay(jsonObject.get(spinner.getSelectedItem().toString()).toString()));
                 }
             }
 
