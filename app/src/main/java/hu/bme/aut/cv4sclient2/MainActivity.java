@@ -20,10 +20,12 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.gson.JsonObject;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +42,7 @@ import hu.bme.aut.cv4sclient2.model.Functor;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_TAKE_PHOTO = 1;
     private static final int REQUEST_PICK_IMAGE = 2;
 
     File photoFile = null;
@@ -104,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
                     public void run(Object param) {
                         List<String> list=(List<String>)param;
                         list.add(0, "(Choose)");
-                        updateGetSpinner((List<String>)list);
+                        updateGetSpinner(list);
                     }
                 });
             }
@@ -128,20 +130,17 @@ public class MainActivity extends AppCompatActivity {
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-                            try {
-                                photoFile = File.createTempFile(editText.getText().toString(),".jpg",getExternalFilesDir(Environment.DIRECTORY_PICTURES));
-                            } catch (IOException ex) {
-                                ex.printStackTrace();
-                            }
+                            photoFile = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES)+"/"+editText.getText().toString()+".jpg");
                             if (photoFile != null) {
                                 Uri uri = FileProvider.getUriForFile(getApplicationContext(),
                                         "com.example.android.fileprovider",
                                         photoFile);
                                 intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
-                                startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
+                                startActivityForResult(intent, REQUEST_TAKE_PHOTO);
                             }
                         }
                     });
+                    builder.setNegativeButton("Cancel", null);
                     builder.create().show();
                 }
             };
@@ -159,8 +158,45 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_TAKE_PHOTO && resultCode == RESULT_OK) {
+            sendBtn.setVisibility(View.VISIBLE);
+        } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK) {
+            try {
+                createFileWithName(data.getData());
+                sendBtn.setVisibility(View.VISIBLE);
+            }
+            catch (IOException e)
+            {
+                Toast.makeText(getApplicationContext(), "Could not create file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void createFileWithName(Uri uri) throws IOException {
+        InputStream inputStream = MainActivity.this.getContentResolver().openInputStream(uri);
+        byte[] buffer = new byte[inputStream.available()];
+        inputStream.read(buffer);
+        photoFile = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getFilenameFromUri(uri));
+        OutputStream outputStream = new FileOutputStream(photoFile);
+        outputStream.write(buffer);
+    }
+
+    public String getFilenameFromUri(Uri uri) {
+        String name = null;
+        try (Cursor cursor = MainActivity.this.getContentResolver().query(uri, null, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                name = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+            }
+        }
+        return name;
+    }
+
     private void updateGetSpinner(List<String> list) {
         Spinner spinner = (Spinner) findViewById(R.id.getSpinner);
+
+        Toast.makeText(getApplicationContext(), "List loaded", Toast.LENGTH_SHORT).show();
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, list);
@@ -193,13 +229,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateResultSpinner(final JsonObject jsonObject) {
         final Spinner spinner = (Spinner) findViewById(R.id.resultSpinner);
+
         spinner.setVisibility(View.VISIBLE);
+
+        String message="Response received";
 
         List<String> keyList=new ArrayList<>();
         keyList.add("(Choose from result elements)");
         for (Map.Entry e:jsonObject.entrySet()) {
             keyList.add((String)e.getKey());
+            if(e.getKey().equals("message"))
+                message+=", message: "+jsonObject.get("message");
         }
+
+
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, keyList);
@@ -222,39 +266,5 @@ public class MainActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parentView) {
             }
         });
-    }
-
-    public String getFilenameFromUri(Uri uri) {
-        String name = null;
-        try (Cursor cursor = MainActivity.this.getContentResolver().query(uri, null, null, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                name = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-            }
-        }
-        return name;
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            sendBtn.setVisibility(View.VISIBLE);
-        } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK) {
-            sendBtn.setVisibility(View.VISIBLE);
-            createFileWithName(data.getData());
-        }
-    }
-
-    private void createFileWithName(Uri uri) {
-        try {
-            InputStream inputStream = MainActivity.this.getContentResolver().openInputStream(uri);
-            byte[] buffer = new byte[inputStream.available()];
-            inputStream.read(buffer);
-            if (photoFile == null)
-                photoFile = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getFilenameFromUri(uri));
-            OutputStream outputStream = new FileOutputStream(photoFile);
-            outputStream.write(buffer);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }

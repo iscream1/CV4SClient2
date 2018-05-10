@@ -7,8 +7,8 @@ public class StringHandler {
                 .replace(",", ",\n").replace("[", "\n[\n").replace("]", "\n]\n").replace("{", "{\n").replace("}", "\n}");
     }
 
-    public static String formatToParse(String in)
-    {
+
+    public static String formatToParse(String in) {
         in=in.replace("\\\"", "'").replace("\\\\", "\\");
         return in.substring(1, in.length() - 1);
     }

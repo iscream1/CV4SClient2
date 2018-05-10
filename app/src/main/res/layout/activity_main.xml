@@ -21,7 +21,7 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="http://192.168.1.202:45455/api/image/"
+                android:text="http://192.168.1.189:45455/api/image/"
                 android:hint="@string/rest_endpoint_url"
                 android:id="@+id/ipET"
                 android:maxLines="1"/>

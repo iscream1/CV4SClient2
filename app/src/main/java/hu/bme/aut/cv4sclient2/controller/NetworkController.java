@@ -3,7 +3,6 @@ package hu.bme.aut.cv4sclient2.controller;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.google.gson.JsonArray;
@@ -23,20 +22,15 @@ import cz.msebera.android.httpclient.client.HttpClient;
 import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
 import cz.msebera.android.httpclient.client.methods.HttpUriRequest;
-import cz.msebera.android.httpclient.client.protocol.HttpClientContext;
 import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
-import cz.msebera.android.httpclient.entity.mime.content.StringBody;
-import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
-import cz.msebera.android.httpclient.impl.client.DefaultHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
-import cz.msebera.android.httpclient.impl.conn.BasicHttpClientConnectionManager;
 import cz.msebera.android.httpclient.params.CoreConnectionPNames;
 import hu.bme.aut.cv4sclient2.model.Functor;
 
 public class NetworkController {
     public static void postFileAsync(final String url, final String photoPath, final Context context, final Functor onPostExecuteHandler) {
         new AsyncTask<Void, Void, JsonObject>() {
-            IOException exception = null;
+            Exception exception = null;
 
             @Override
             protected void onPreExecute() {
@@ -48,7 +42,7 @@ public class NetworkController {
             protected JsonObject doInBackground(Void... voids) {
                 try {
                     return post(url, photoPath);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     this.exception = e;
                 }
                 return null;
@@ -61,14 +55,14 @@ public class NetworkController {
                     onPostExecuteHandler.run(jsonObject);
                 }
                 else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     public static void getListFromServiceAsync(final String url, final Context context, final Functor onPostExecuteHandler) {
         new AsyncTask<Void, Void, List<String>>() {
-            IOException exception = null;
+            Exception exception = null;
 
             @Override
             protected void onPreExecute() {
@@ -87,7 +81,7 @@ public class NetworkController {
                         retList.add(jsonArray.get(i).toString());
                     }
                     return retList;
-                } catch (IOException e) {
+                } catch (Exception e) {
                     this.exception = e;
                 }
                 return null;
@@ -101,14 +95,14 @@ public class NetworkController {
                     onPostExecuteHandler.run(list);
                 }
                 else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     public static void getFromServiceAsync(final long id, final String url, final Context context, final Functor onPostExecuteHandler) {
         new AsyncTask<Void, Void, String>() {
-            IOException exception = null;
+            Exception exception = null;
 
             @Override
             protected void onPreExecute() {
@@ -121,7 +115,7 @@ public class NetworkController {
                 try {
                     String result = NetworkController.get(url + "/" + id);
                     return StringHandler.formatToDisplay(result);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     this.exception = e;
                 }
                 return null;
@@ -134,7 +128,7 @@ public class NetworkController {
                     onPostExecuteHandler.run(str);
                 }
                 else
-                    Toast.makeText(context, "Request failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
