@@ -28,14 +28,14 @@ import cz.msebera.android.httpclient.params.CoreConnectionPNames;
 import hu.bme.aut.cv4sclient2.model.Functor;
 
 public class NetworkController {
-    public static void postFileAsync(final String url, final String photoPath, final Context context, final Functor onPostExecuteHandler) {
+    public static void postFileAsync(final String url, final String photoPath, final Functor onPostExecuteHandler, final Functor toastDisplayFunctor) {
         new AsyncTask<Void, Void, JsonObject>() {
             Exception exception = null;
 
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
+                toastDisplayFunctor.run("Sending request...");
             }
 
             @Override
@@ -55,19 +55,19 @@ public class NetworkController {
                     onPostExecuteHandler.run(jsonObject);
                 }
                 else
-                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
+                    toastDisplayFunctor.run("Request failed "+exception.getMessage());
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    public static void getListFromServiceAsync(final String url, final Context context, final Functor onPostExecuteHandler) {
+    public static void getListFromServiceAsync(final String url, final Functor onPostExecuteHandler, final Functor toastDisplayFunctor) {
         new AsyncTask<Void, Void, List<String>>() {
             Exception exception = null;
 
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
+                toastDisplayFunctor.run("Sending request...");
             }
 
             @Override
@@ -95,19 +95,19 @@ public class NetworkController {
                     onPostExecuteHandler.run(list);
                 }
                 else
-                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
+                    toastDisplayFunctor.run("Request failed "+exception.getMessage());
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    public static void getFromServiceAsync(final long id, final String url, final Context context, final Functor onPostExecuteHandler) {
+    public static void getFromServiceAsync(final long id, final String url, final Functor onPostExecuteHandler, final Functor toastDisplayFunctor) {
         new AsyncTask<Void, Void, String>() {
             Exception exception = null;
 
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                Toast.makeText(context, "Sending request...", Toast.LENGTH_SHORT).show();
+                toastDisplayFunctor.run("Sending request...");
             }
 
             @Override
@@ -128,7 +128,7 @@ public class NetworkController {
                     onPostExecuteHandler.run(str);
                 }
                 else
-                    Toast.makeText(context, "Request failed "+exception.getMessage(), Toast.LENGTH_SHORT).show();
+                    toastDisplayFunctor.run("Request failed "+exception.getMessage());
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }

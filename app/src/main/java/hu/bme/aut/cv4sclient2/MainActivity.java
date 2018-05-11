@@ -25,7 +25,6 @@ import android.widget.Toast;
 import com.google.gson.JsonObject;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
     TextView descriptorTV;
     Button sendBtn;
 
+    Functor toastDisplayFunctor;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
 
         initLoadBtn();
 
+        initToastDisplayFunctor();
+
         initSendBtn();
 
         initGetSpinner();
@@ -68,6 +71,15 @@ public class MainActivity extends AppCompatActivity {
         initIpET();
 
         initDescriptorTV();
+    }
+
+    private void initToastDisplayFunctor() {
+        toastDisplayFunctor=new Functor() {
+            @Override
+            public void run(Object param) {
+                Toast.makeText(getApplicationContext(), (String)param, Toast.LENGTH_SHORT).show();
+            }
+        };
     }
 
     private void initIpET() {
@@ -88,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
                     public void run(Object jsonObject) {
                         updateResultSpinner((JsonObject)jsonObject);
                     }
-                });
+                },
+                toastDisplayFunctor);
             }
         });
     }
@@ -108,7 +121,8 @@ public class MainActivity extends AppCompatActivity {
                         list.add(0, "(Choose)");
                         updateGetSpinner(list);
                     }
-                });
+                },
+                toastDisplayFunctor);
             }
         });
     }
@@ -202,22 +216,21 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_item, list);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
-        spinner.setVisibility(View.VISIBLE);
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parentView, final View selectedItemView, final int position, long id) {
                 if (id != 0) {
                     final long idToGet = id - 1;
-                    final Context context=getApplicationContext();
                     final String url=ipET.getText().toString();
-                    NetworkController.getFromServiceAsync(idToGet, url, context, new Functor() {
-                        @Override
-                        public void run(Object str) {
-                            findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
-                            descriptorTV.setText((String)str);
-                        }
-                    });
+                    NetworkController.getFromServiceAsync(idToGet, url, new Functor() {
+                                @Override
+                                public void run(Object str) {
+                                    findViewById(R.id.resultSpinner).setVisibility(View.INVISIBLE);
+                                    descriptorTV.setText((String) str);
+                                }
+                            },
+                    toastDisplayFunctor);
                 }
             }
 
@@ -249,7 +262,6 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_item, keyList);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
-        spinner.setVisibility(View.VISIBLE);
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
