@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                NetworkController.postFileAsync(ipET.getText().toString(), photoFile.getPath(), getApplicationContext(), new Functor() {
+                NetworkController.postFileAsync(ipET.getText().toString(), photoFile.getPath(), new Functor() {
                     @Override
                     public void run(Object jsonObject) {
                         updateResultSpinner((JsonObject)jsonObject);
@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
         (findViewById(R.id.loadBtn)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                NetworkController.getListFromServiceAsync(ipET.getText().toString(), getApplicationContext(), new Functor() {
+                NetworkController.getListFromServiceAsync(ipET.getText().toString(), new Functor() {
                     @Override
                     public void run(Object param) {
                         List<String> list=(List<String>)param;
